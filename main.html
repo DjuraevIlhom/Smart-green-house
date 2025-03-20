@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring oynasi</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-dark: #388E3C;
+            --accent-color: #8BC34A;
+            --text-color: #333;
+            --light-grey: #f5f5f5;
+            --card-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light-grey);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        header {
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        
+        .indicator-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .active {
+            background-color: #4CAF50;
+        }
+        
+        .inactive {
+            background-color: #F44336;
+        }
+        
+        .value-display {
+            font-size: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .button-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1rem;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        button.secondary {
+            background-color: #757575;
+        }
+        
+        button.secondary:hover {
+            background-color: #616161;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 1rem 0;
+        }
+        
+        .servo-positions {
+            display: flex;
+            justify-content: space-between;
+            margin: 1rem 0;
+        }
+        
+        .servo-card {
+            text-align: center;
+            padding: 0.5rem;
+            background-color: var(--light-grey);
+            border-radius: 4px;
+            flex: 1;
+            margin: 0 0.25rem;
+        }
+        
+        .servo-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .chart-container {
+            height: 200px;
+            margin: 1rem 0;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Monitoring oynasi</h1>
+    </header>
+    
+    <div class="container">
+        <div class="dashboard">
+            <!-- Servo Control Card -->
+            <div class="card">
+                <div class="card-header">Servo motorlarni boshqarish</div>
+                <div class="card-body">
+                    <div class="servo-positions">
+                        <div class="servo-card">
+                            <div>Servo motor 1</div>
+                            <div class="servo-value">90°</div>
+                        </div>
+                        <div class="servo-card">
+                            <div>Servo motor 2</div>
+                            <div class="servo-value">180°</div>
+                        </div>
+                        <div class="servo-card">
+                            <div>Servo motor  3</div>
+                            <div class="servo-value">45°</div>
+                        </div>
+                        <div class="servo-card">
+                            <div>Servo motor 4</div>
+                            <div class="servo-value">0°</div>
+                        </div>
+                    </div>
+                    <div class="button-container">
+                        <button id="rotate-btn">Aylanntirish</button>
+                        <button class="secondary" id="reset-btn">Pozitsiyani oz holiga qaytarish</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Light Control Card -->
+            <div class="card">
+                <div class="card-header">Yorug'lik ko'rsatkichlari </div>
+                <div class="card-body">
+                    <div class="status-indicator">
+                        <div class="indicator-dot active"></div>
+                        <span>Lampa yoniq</span>
+                    </div>
+                    <div>
+                        <p>Lampa yorug'ligi: <span id="brightness-value">75%</span></p>
+                        <input type="range" min="0" max="255" value="191" id="brightness-slider">
+                    </div>
+                    <div>
+                        <p>Yorug'lik sensori ko'rsatkichi: <span id="light-sensor">420</span></p>
+                    </div>
+                    <div class="button-container">
+                        <button id="light-toggle">O'chirish</button>
+                        <button class="secondary" id="auto-light">Avto rejim</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Watering System Card -->
+            <div class="card">
+                <div class="card-header">Suv quyish sistemasi </div>
+                <div class="card-body">
+                    <div class="status-indicator">
+                        <div class="indicator-dot inactive"></div>
+                        <span>Suv nasosi ochirilgan</span>
+                    </div>
+                    <div>
+                        <p>Tuproq namligi: <span id="moisture-level">68%</span></p>
+                    </div>
+                    <div class="chart-container">
+                        <!-- Moisture level chart will go here -->
+                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f0f0f0; border-radius:4px;">
+                            Tuproq namligi tarixi
+                        </div>
+                    </div>
+                    <div class="button-container">
+                        <button id="water-now">Suv quyish</button>
+                        <button class="secondary" id="auto-water">Avto rejim </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Status Card -->
+            <div class="card">
+                <div class="card-header">Status</div>
+                <div class="card-body">
+                    <div class="status-indicator">
+                        <div class="indicator-dot active"></div>
+                        <span>Issiqhona ishlovotti</span>
+                    </div>
+                    <div>
+                        <p>Ohirgi o'rin almashtirish: <span id="last-rotation">2 min ago</span></p>
+                        <p>Ohirgi suv quyish: <span id="last-watering">47 min ago</span></p>
+                        <p>Suv hajmi: <span id="water-level">84%</span></p>
+                    </div>
+                    <div class="value-display">
+                        23.5°C
+                    </div>
+                    <p style="text-align: center;">Harorat</p>
+                    <div class="button-container">
+                        <button id="refresh-status">Yangilash</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p> 2025 Avtomatlashtirilgan Issiqhona | 💚 bilan yaratilgan </p>
+    </footer>
+    
+    <script>
+        // Simulating interaction - in a real project this would connect to your Arduino
+        document.getElementById('rotate-btn').addEventListener('click', function() {
+            // Code to rotate servos would go here
+            alert('Rotating platforms...');
+            
+            // Update the displayed positions for demonstration
+            const servoValues = document.querySelectorAll('.servo-value');
+            const angles = [0, 45, 90, 180];
+            servoValues.forEach((value, index) => {
+                const newAngle = angles[(angles.indexOf(parseInt(value.textContent)) + 1) % angles.length];
+                value.textContent = newAngle + '°';
+            });
+        });
+        
+        document.getElementById('light-toggle').addEventListener('click', function() {
+            const dot = document.querySelector('.card:nth-child(2) .indicator-dot');
+            const statusText = document.querySelector('.card:nth-child(2) .status-indicator span');
+            const button = this;
+            
+            if (dot.classList.contains('active')) {
+                dot.classList.remove('active');
+                dot.classList.add('inactive');
+                statusText.textContent = 'Lights are OFF';
+                button.textContent = 'Turn ON';
+            } else {
+                dot.classList.remove('inactive');
+                dot.classList.add('active');
+                statusText.textContent = 'Lights are ON';
+                button.textContent = 'Turn OFF';
+            }
+        });
+        
+        document.getElementById('brightness-slider').addEventListener('input', function() {
+            const percentage = Math.round((this.value / 255) * 100);
+            document.getElementById('brightness-value').textContent = percentage + '%';
+        });
+        
+        document.getElementById('water-now').addEventListener('click', function() {
+            const dot = document.querySelector('.card:nth-child(3) .indicator-dot');
+            const statusText = document.querySelector('.card:nth-child(3) .status-indicator span');
+            
+            // Simulate watering
+            dot.classList.remove('inactive');
+            dot.classList.add('active');
+            statusText.textContent = 'Water Pump is ON';
+            this.disabled = true;
+            
+            setTimeout(() => {
+                dot.classList.remove('active');
+                dot.classList.add('inactive');
+                statusText.textContent = 'Water Pump is OFF';
+                this.disabled = false;
+                document.getElementById('last-watering').textContent = 'Just now';
+            }, 3000);
+        });
+        
+        document.getElementById('refresh-status').addEventListener('click', function() {
+            // Simulate refreshing status
+            this.textContent = 'Refreshing...';
+            setTimeout(() => {
+                this.textContent = 'Refresh Status';
+                // Update with random values for demo
+                document.getElementById('moisture-level').textContent = Math.floor(Math.random() * 30 + 50) + '%';
+                document.getElementById('light-sensor').textContent = Math.floor(Math.random() * 200 + 300);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

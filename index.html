@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O'simliklar Parvarish Tizimi</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-dark: #388E3C;
+            --accent-color: #8BC34A;
+            --text-color: #333;
+            --light-grey: #f5f5f5;
+            --card-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light-grey);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        header {
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .system-status {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .system-status .indicator-dot {
+            margin-right: 6px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        
+        .indicator-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .active {
+            background-color: #4CAF50;
+            box-shadow: 0 0 8px #4CAF50;
+        }
+        
+        .inactive {
+            background-color: #F44336;
+        }
+        
+        .value-display {
+            font-size: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .button-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1rem;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        button.secondary {
+            background-color: #757575;
+        }
+        
+        button.secondary:hover {
+            background-color: #616161;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 1rem 0;
+        }
+        
+        .servo-positions {
+            display: flex;
+            justify-content: space-between;
+            margin: 1rem 0;
+        }
+        
+        .servo-card {
+            text-align: center;
+            padding: 0.5rem;
+            background-color: var(--light-grey);
+            border-radius: 4px;
+            flex: 1;
+            margin: 0 0.25rem;
+        }
+        
+        .servo-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .chart-container {
+            height: 200px;
+            margin: 1rem 0;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(76, 175, 80, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .auto-badge {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: white;
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>O'simliklar parvarish tizimiga ulanmoqda...</p>
+    </div>
+
+    <header>
+        <div class="system-status">
+            <div id="system-indicator" class="indicator-dot active"></div>
+            <span>Tizim ishlayapti</span>
+        </div>
+        <h1>O'simliklar Parvarish Tizimi</h1>
+        <p>Avtomatlashtirilgan o'simlik parvarish tizimini nazorat qiling</p>
+    </header>
+    
+    <div class="container">
+        <div class="dashboard">
+            <!-- Servo Control Card -->
+            <div class="card">
+                <div class="card-header">Platformalarni Boshqarish</div>
+                <div class="card-body">
+                    <div class="servo-positions" id="servo-container">
+                        <!-- Servo positions will be populated from JS -->
+                    </div>
+                    <div class="button-container">
+                        <button id="rotate-btn">Aylantirish</button>
+                        <button class="secondary" id="reset-btn">Boshlang'ich Holat</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Light Control Card -->
+            <div class="card">
+                <div class="card-header">Yoritish Boshqaruvi</div>
+                <div class="card-body">
+                    <div class="status-indicator">
+                        <div id="light-indicator" class="indicator-dot active"></div>
+                        <span id="light-status">Chiroqlar YONIQ</span>
+                        <span id="light-auto-mode" class="auto-badge">Avto</span>
+                    </div>
+                    <div>
+                        <p>Joriy Yorqinlik: <span id="brightness-value">75%</span></p>
+                        <input type="range" min="0" max="255" value="191" id="brightness-slider">
+                    </div>
+                    <div>
+                        <p>Yorug'lik Sensori: <span id="light-sensor">420</span></p>
+                    </div>
+                    <div class="button-container">
+                        <button id="light-toggle">O'CHIRISH</button>
+                        <button class="secondary" id="auto-light">Qo'lda Rejim</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Watering System Card -->
+            <div class="card">
+                <div class="card-header">Sug'orish Tizimi</div>
+                <div class="card-body">
+                    <div class="status-indicator">
+                        <div id="water-indicator" class="indicator-dot inactive"></div>
+                        <span id="water-status">Nasos O'CHIQ</span>
+                        <span id="water-auto-mode" class="auto-badge">Avto</span>
+                    </div>
+                    <div>
+                        <p>Tuproq Namligi: <span id="moisture-level">68%</span></p>
+                    </div>
+                    <div class="chart-container">
+                        <!-- Moisture level visualization -->
+                        <div style="width:100%; height:100%; display:flex; align-items:flex-end; padding-bottom:10px; position:relative;">
+                            <div id="moisture-bar" style="width:100%; height:68%; background:linear-gradient(to top, #2196F3, #8BC34A); border-radius:4px;"></div>
+                            <div style="position:absolute; width:100%; height:1px; background-color:#333; bottom:30%; left:0;"></div>
+                            <span style="position:absolute; bottom:30%; right:10px; font-size:0.8rem;">Sug'orish chegarasi</span>
+                        </div>
+                    </div>
+                    <div class="button-container">
+                        <button id="water-now">Hozir Sug'orish</button>
+                        <button class="secondary" id="auto-water">Qo'lda Rejim</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Status Card -->
+            <div class="card">
+                <div class="card-header">Tizim Holati</div>
+                <div class="card-body">
+                    <div>
+                        <p>Oxirgi Aylantirish: <span id="last-rotation">2 daqiqa oldin</span></p>
+                        <p>Oxirgi Sug'orish: <span id="last-watering">47 daqiqa oldin</span></p>
+                        <p>Suv Idish Darajasi: <span id="water-level">84%</span></p>
+                    </div>
+                    <div class="value-display" id="temperature">
+                        23.5°C
+                    </div>
+                    <p style="text-align: center;">Joriy Harorat</p>
+                    <div class="button-container">
+                        <button id="refresh-status">Holatni Yangilash</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>&copy; 2025 O'simliklar Parvarish Tizimi | 💚 bilan yaratilgan</p>
+    </footer>
+    
+    <script>
+        // Plant Care System API
+        class PlantCareSystem {
+            constructor() {
+                // Initial state
+                this.state = {
+                    servos: [
+                        { id: 1, angle: 0 },
+                        { id: 2, angle: 90 },
+                        { id: 3, angle: 180 },
+                        { id: 4, angle: 45 }
+                    ],
+                    lighting: {
+                        isOn: true,
+                        brightness: 191, // 0-255
+                        sensorReading: 420,
+                        autoMode: true
+                    },
+                    watering: {
+                        isOn: false,
+                        moistureLevel: 68, // percentage
+                        lastWatering: new Date(Date.now() - 47 * 60 * 1000), // 47 minutes ago
+                        autoMode: true
+                    },
+                    system: {
+                        online: true,
+                        lastRotation: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
+                        waterLevel: 84, // percentage
+                        temperature: 23.5 // celsius
+                    }
+                };
+                
+                // Event callbacks
+                this.eventListeners = {
+                    stateChange: []
+                };
+            }
+            
+            // Add event listener
+            on(event, callback) {
+                if (this.eventListeners[event]) {
+                    this.eventListeners[event].push(callback);
+                }
+            }
+            
+            // Trigger events
+            trigger(event, data) {
+                if (this.eventListeners[event]) {
+                    this.eventListeners[event].forEach(callback => callback(data));
+                }
+            }
+            
+            // Get current state
+            getState() {
+                return this.state;
+            }
+            
+            // Update state and trigger event
+            updateState(newState) {
+                this.state = {...this.state, ...newState};
+                this.trigger('stateChange', this.state);
+            }
+            
+            // Control servos
+            rotateServos() {
+                // In a real implementation, this would send a command to Arduino
+                console.log("Arduino'ga aylantirish buyrug'i yuborilmoqda...");
+                
+                // Simulate rotation
+                const angles = [0, 45, 90, 180];
+                const newServos = this.state.servos.map(servo => {
+                    const currentIndex = angles.indexOf(servo.angle);
+                    const newIndex = (currentIndex + 1) % angles.length;
+                    return {
+                        ...servo,
+                        angle: angles[newIndex]
+                    };
+                });
+                
+                this.updateState({ 
+                    servos: newServos,
+                    system: {
+                        ...this.state.system,
+                        lastRotation: new Date()
+                    }
+                });
+                
+                return newServos;
+            }
+            
+            resetServos() {
+                // Reset all servos to initial position
+                const newServos = this.state.servos.map((servo, index) => ({
+                    ...servo,
+                    angle: [0, 90, 180, 45][index]
+                }));
+                
+                this.updateState({ servos: newServos });
+                return newServos;
+            }
+            
+            // Control lighting
+            toggleLight() {
+                const newState = !this.state.lighting.isOn;
+                this.updateState({
+                    lighting: {
+                        ...this.state.lighting,
+                        isOn: newState,
+                        // If turning on in manual mode, set brightness to 75%
+                        brightness: newState && !this.state.lighting.autoMode ? 191 : this.state.lighting.brightness
+                    }
+                });
+                return newState;
+            }
+            
+            setBrightness(value) {
+                // value should be 0-255
+                const brightness = Math.max(0, Math.min(255, value));
+                this.updateState({
+                    lighting: {
+                        ...this.state.lighting,
+                        brightness: brightness,
+                        // If setting brightness manually, turn on lights if they're off
+                        isOn: brightness > 0 ? true : this.state.lighting.isOn
+                    }
+                });
+                return brightness;
+            }
+            
+            toggleLightAutoMode() {
+                const newMode = !this.state.lighting.autoMode;
+                this.updateState({
+                    lighting: {
+                        ...this.state.lighting,
+                        autoMode: newMode
+                    }
+                });
+                return newMode;
+            }
+            
+            // Control watering
+            startWatering() {
+                // In a real implementation, this would send a command to Arduino
+                console.log("Suv nasosini ishga tushirish...");
+                
+                this.updateState({
+                    watering: {
+                        ...this.state.watering,
+                        isOn: true
+                    }
+                });
+                
+                // Simulate pump turning off after 3 seconds
+                setTimeout(() => {
+                    this.updateState({
+                        watering: {
+                            ...this.state.watering,
+                            isOn: false,
+                            lastWatering: new Date(),
+                            // Increase moisture level after watering
+                            moistureLevel: Math.min(100, this.state.watering.moistureLevel + 20)
+                        },
+                        system: {
+                            ...this.state.system,
+                            // Decrease water tank level
+                            waterLevel: Math.max(0, this.state.system.waterLevel - 5)
+                        }
+                    });
+                }, 3000);
+                
+                return true;
+            }
+            
+            toggleWaterAutoMode() {
+                const newMode = !this.state.watering.autoMode;
+                this.updateState({
+                    watering: {
+                        ...this.state.watering,
+                        autoMode: newMode
+                    }
+                });
+                return newMode;
+            }
+            
+            // Refresh system status
+            refreshStatus() {
+                // In a real implementation, this would fetch data from Arduino
+                console.log("Eng so'nggi sensor ma'lumotlarini olish...");
+                
+                // Simulate sensor readings
+                const newLightSensor = Math.floor(Math.random() * 200 + 300);
+                const newMoistureLevel = Math.floor(Math.random() * 30 + 50);
+                const newTemperature = Math.round((Math.random() * 5 + 20) * 10) / 10;
+                
+                this.updateState({
+                    lighting: {
+                        ...this.state.lighting,
+                        sensorReading: newLightSensor
+                    },
+                    watering: {
+                        ...this.state.watering,
+                        moistureLevel: newMoistureLevel
+                    },
+                    system: {
+                        ...this.state.system,
+                        temperature: newTemperature
+                    }
+                });
+                
+                return {
+                    lightSensor: newLightSensor,
+                    moistureLevel: newMoistureLevel,
+                    temperature: newTemperature
+                };
+            }
+            
+            // In a real implementation, these methods would communicate with your Arduino
+            async connectToDevice() {
+                // Simulate connection delay
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                console.log("O'simliklar parvarish tizimiga ulandi");
+                return true;
+            }
+        }
+
+        // ----- UI Controller -----
+        class PlantCareUI {
+            constructor(system) {
+                this.system = system;
+                this.elements = {
+                    loading: document.getElementById('loading'),
+                    servoContainer: document.getElementById('servo-container'),
+                    rotateBtn: document.getElementById('rotate-btn'),
+                    resetBtn: document.getElementById('reset-btn'),
+                    lightIndicator: document.getElementById('light-indicator'),
+                    lightStatus: document.getElementById('light-status'),
+                    lightAutoMode: document.getElementById('light-auto-mode'),
+                    brightnessValue: document.getElementById('brightness-value'),
+                    brightnessSlider: document.getElementById('brightness-slider'),
+                    lightSensor: document.getElementById('light-sensor'),
+                    lightToggle: document.getElementById('light-toggle'),
+                    autoLight: document.getElementById('auto-light'),
+                    waterIndicator: document.getElementById('water-indicator'),
+                    waterStatus: document.getElementById('water-status'),
+                    waterAutoMode: document.getElementById('water-auto-mode'),
+                    moistureLevel: document.getElementById('moisture-level'),
+                    moistureBar: document.getElementById('moisture-bar'),
+                    waterNow: document.getElementById('water-now'),
+                    autoWater: document.getElementById('auto-water'),
+                    lastRotation: document.getElementById('last-rotation'),
+                    lastWatering: document.getElementById('last-watering'),
+                    waterLevel: document.getElementById('water-level'),
+                    temperature: document.getElementById('temperature'),
+                    refreshStatus: document.getElementById('refresh-status'),
+                    systemIndicator: document.getElementById('system-indicator')
+                };
+                
+                // Initialize UI
+                this.init();
+            }
+            
+            async init() {
+                // Connect to system
+                await this.system.connectToDevice();
+                
+                // Hide loading overlay
+                this.elements.loading.style.display = 'none';
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Initial render
+                this.render(this.system.getState());
+                
+                // Subscribe to state changes
+                this.system.on('stateChange', (state) => this.render(state));
+                
+                // Start periodic updates
+                this.startPeriodicUpdates();
+            }
+            
+            setupEventListeners() {
+                // Servo controls
+                this.elements.rotateBtn.addEventListener('click', () => {
+                    this.system.rotateServos();
+                });
+                
+                this.elements.resetBtn.addEventListener('click', () => {
+                    this.system.resetServos();
+                });
+                
+                // Light controls
+                this.elements.lightToggle.addEventListener('click', () => {
+                    const isOn = this.system.toggleLight();
+                    this.elements.lightToggle.textContent = isOn ? "O'CHIRISH" : "YOQISH";
+                });
+                
+                this.elements.brightnessSlider.addEventListener('input', (e) => {
+                    this.system.setBrightness(parseInt(e.target.value));
+                });
+                
+                this.elements.autoLight.addEventListener('click', () => {
+                    const isAuto = this.system.toggleLightAutoMode();
+                    this.elements.autoLight.textContent = isAuto ? "Qo'lda Rejim" : "Avto Rejim";
+                });
+                
+                // Water controls
+                this.elements.waterNow.addEventListener('click', () => {
+                    this.system.startWatering();
+                    this.elements.waterNow.disabled = true;
+                    setTimeout(() => {
+                        this.elements.waterNow.disabled = false;
+                    }, 3000);
+                });
+                
+                this.elements.autoWater.addEventListener('click', () => {
+                    const isAuto = this.system.toggleWaterAutoMode();
+                    this.elements.autoWater.textContent = isAuto ? "Qo'lda Rejim" : "Avto Rejim";
+                });
+                
+                // Refresh status
+                this.elements.refreshStatus.addEventListener('click', () => {
+                    this.elements.refreshStatus.textContent = 'Yangilanmoqda...';
+                    this.elements.refreshStatus.disabled = true;
+                    this.system.refreshStatus();
+                    setTimeout(() => {
+                        this.elements.refreshStatus.textContent = 'Holatni Yangilash';
+                        this.elements.refreshStatus.disabled = false;
+                    }, 1000);
+                });
+            }
+            
+            render(state) {
+                // Render servos
+                this.renderServos(state.servos);
+                
+                // Render lighting
+                this.renderLighting(state.lighting);
+                
+                // Render watering
+                this.renderWatering(state.watering);
+                
+                // Render system status
+                this.renderSystemStatus(state.system);
+            }
+            
+            renderServos(servos) {
+                // Clear container
+                this.elements.servoContainer.innerHTML = '';
+                
+                // Create servo cards
+                servos.forEach(servo => {
+                    const servoCard = document.createElement('div');
+                    servoCard.className = 'servo-card';
+                    
+                    const servoLabel = document.createElement('div');
+                    servoLabel.textContent = `Servo ${servo.id}`;
+                    
+                    const servoValue = document.createElement('div');
+                    servoValue.className = 'servo-value';
+                    servoValue.textContent = `${servo.angle}°`;
+                    
+                    servoCard.appendChild(servoLabel);
+                    servoCard.appendChild(servoValue);
+                    
+                    this.elements.servoContainer.appendChild(servoCard);
+                });
+            }
+            
+            renderLighting(lighting) {
+                // Set indicator
+                if (lighting.isOn) {
+                    this.elements.lightIndicator.classList.remove('inactive');
+                    this.elements.lightIndicator.classList.add('active');
+                    this.elements.lightStatus.textContent = 'Chiroqlar YONIQ';
+                    this.elements.lightToggle.textContent = "O'CHIRISH";
+                } else {
+                    this.elements.lightIndicator.classList.remove('active');
+                    this.elements.lightIndicator.classList.add('inactive');
+                    this.elements.lightStatus.textContent = "Chiroqlar O'CHIQ";
+                    this.elements.lightToggle.textContent = 'YOQISH';
+                }
+                
+                // Set brightness
+                const brightnessPercentage = Math.round((lighting.brightness / 255) * 100);
+                this.elements.brightnessValue.textContent = `${brightnessPercentage}%`;
+                this.elements.brightnessSlider.value = lighting.brightness;
+                
+                // Set light sensor reading
+                this.elements.lightSensor.textContent = lighting.sensorReading;
+                
+                // Set auto mode
+                this.elements.lightAutoMode.style.display = lighting.autoMode ? 'inline-block' : 'none';
+                this.elements.autoLight.textContent = lighting.autoMode ? "Qo'lda Rejim" : "Avto Rejim";
+            }
+            
+            renderWatering(watering) {
+                // Set indicator
+                if (watering.isOn) {
+                    this.elements.waterIndicator.classList.remove('inactive');
+                    this.elements.waterIndicator.classList.add('active');
+                    this.elements.waterStatus.textContent = 'Nasos YONIQ';
+                    this.elements.waterNow.disabled = true;
+                } else {
+                    this.elements.waterIndicator.classList.remove('active');
+                    this.elements.waterIndicator.classList.add('inactive');
+                    this.elements.waterStatus.textContent = "Nasos O'CHIQ";
+                    this.elements.waterNow.disabled = false;
+                }
+                
+                // Set moisture level
+                this.elements.moistureLevel.textContent = `${watering.moistureLevel}%`;
+                this.elements.moistureBar.style.height = `${watering.moistureLevel}%`;
+                
+                // Set water auto mode
+                this.elements.waterAutoMode.style.display = watering.autoMode ? 'inline-block' : 'none';
+                this.elements.autoWater.textContent = watering.autoMode ? "Qo'lda Rejim" : "Avto Rejim";
+            }
+            
+            renderSystemStatus(system) {
+                // Set last rotation time
+                const rotationTime = this.getTimeAgo(system.lastRotation);
+                this.elements.lastRotation.textContent = rotationTime;
+                
+                // Set last watering time
+                const wateringTime = this.getTimeAgo(this.system.state.watering.lastWatering);
+                this.elements.lastWatering.textContent = wateringTime;
+                
+                // Set water level
+                this.elements.waterLevel.textContent = `${system.waterLevel}%`;
+                
+                // Set temperature
+                this.elements.temperature.textContent = `${system.temperature}°C`;
+                
+                // Set system indicator
+                if (system.online) {
+                    this.elements.systemIndicator.classList.remove('inactive');
+                    this.elements.systemIndicator.classList.add('active');
+                } else {
+                    this.elements.systemIndicator.classList.remove('active');
+                    this.elements.systemIndicator.classList.add('inactive');
+                }
+            }
+            
+            getTimeAgo(date) {
+                const seconds = Math.floor((new Date() - date) / 1000);
+                
+                if (seconds < 60) return 'Hozirgina';
+                
+                const minutes = Math.floor(seconds / 60);
+                if (minutes < 60) return `${minutes} daqiqa oldin`;
+                
+                const hours = Math.floor(minutes / 60);
+                if (hours < 24) return `${hours} soat oldin`;
+                
+                const days = Math.floor(hours / 24);
+                return `${days} kun oldin`;
+            }
+            
+            startPeriodicUpdates() {
+                // Simulate automatic updates
+                setInterval(() => {
+                    const state = this.system.getState();
+                    
+                    // Simulate environmental changes
+                    if (state.watering.moistureLevel > 0) {
+                        this.system.updateState({
+                            watering: {
+                                ...state.watering,
+                                moistureLevel: Math.max(30, state.watering.moistureLevel - 1)
+                            }
+                        });
+                    }
+                    
+                    // Auto watering
+                    if (state.watering.autoMode && !state.watering.isOn && state.watering.moistureLevel < 40) {
+                        this.system.startWatering();
+                    }
+                    
+                    // Auto lighting based on sensor
+                    if (state.lighting.autoMode) {
+                        const lightLevel = state.lighting.sensorReading;
+                        if (lightLevel < 350 && !state.lighting.isOn) {
+                            this.system.updateState({
+                                lighting: {
+                                    ...state.lighting,
+                                    isOn: true,
+                                    brightness: 191
+                                }
+                            });
+                        } else if (lightLevel >= 500 && state.lighting.isOn) {
+                            this.system.updateState({
+                                lighting: {
+                                    ...state.lighting,
+                                    isOn: false
+                                }
+                            });
+                        }
+                    }
+                    
+                }, 5000);
+                
+                // Simulate light sensor changes
+                setInterval(() => {
+                    const state = this.system.getState();
+                    const currentReading = state.lighting.sensorReading;
+                    const newReading = currentReading + Math.floor(Math.random() * 41 - 20); // +/- 20
+                    
+                    this.system.updateState({
+                        lighting: {
+                            ...state.lighting,
+                            sensorReading: Math.max(100, Math.min(800, newReading))
+                        }
+                    });
+                }, 10000);
+            }
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', () => {
+            const system = new PlantCareSystem();
+            const ui = new PlantCareUI(system);
+        });
